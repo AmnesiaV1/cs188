@@ -291,22 +291,29 @@ class CornersProblem(search.SearchProblem):
         self._expanded = 0 # DO NOT CHANGE; Number of search nodes expanded
         # Please add any code here which you would like to use
         # in initializing the problem
-        "*** YOUR CODE HERE ***"
+
+        #A tuple of tuples that is: (corner, True) for each corner, this can be carried over in our state and every time we hit a corner create a new tuple with the updated corner bool value
+        self.cornerBools = tuple([(corner, True) for corner in self.corners])
 
     def getStartState(self):
         """
         Returns the start state (in your state space, not the full Pacman state
         space)
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #A tuple with the starting pos and another tuple of (cornerPos, true) indicating all corners have not been visited
+        return (self.startingPosition, self.cornerBools)
 
     def isGoalState(self, state: Any):
         """
         Returns whether this search state is a goal state of the problem.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #State is a tuple with state[0] being pos and state[1] being a tuple of all the corners
+        #Each corner in state is another tuple with corner[0] being the coords and corner[1] being the boolean value
+        #Iterate through the corners tuple and return true only if all their respective bools are false
+        for corner in state[1]:
+            if (corner[1] == True):
+                return False
+        return True
 
     def getSuccessors(self, state: Any):
         """
@@ -321,14 +328,37 @@ class CornersProblem(search.SearchProblem):
 
         successors = []
         for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
-            # Add a successor state to the successor list if the action is legal
-            # Here's a code snippet for figuring out whether a new position hits a wall:
-            #   x,y = currentPosition
-            #   dx, dy = Actions.directionToVector(action)
-            #   nextx, nexty = int(x + dx), int(y + dy)
-            #   hitsWall = self.walls[nextx][nexty]
+            #Gather the updated coordinate for the given action
+            x,y = state[0]
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
 
-            "*** YOUR CODE HERE ***"
+            #If wall, move to the next action
+            hitsWall = self.walls[nextx][nexty]
+            if (hitsWall):
+                continue 
+
+            #Not wall, valid successor, update pos
+            newState = ((nextx, nexty), state[1])
+
+            #Check if corner, and if so set the given corner in the tuple state to False, keep everything else as it is
+            #Approach: convert the state[1] (corners) tuple into a list then use list comprehension to create a tuple with the updated values 
+            if ((nextx, nexty) in self.corners):
+                #First convert the corners tuple in my state to a list for easy value modification
+                cornersToList = []
+                for corner in state[1]:
+                    if (corner[0] == (nextx, nexty)):
+                        cornersToList += [[corner[0], False]]
+                    else:
+                        cornersToList += [[corner[0], corner[1]]]
+
+                #Then convert this updated list back into a tuple and plug it back in states
+                newCorners = tuple([(i[0], i[1]) for i in cornersToList])
+                newState = ((nextx, nexty), newCorners)
+
+            #add valid successor to successors list
+            successor = (newState, action, 1)
+            successors += [successor]
 
         self._expanded += 1 # DO NOT CHANGE
         return successors

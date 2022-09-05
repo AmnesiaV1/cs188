@@ -148,8 +148,9 @@ def uniformCostSearch(problem: SearchProblem):
     """Search the node of least total cost first."""
     #Again, very similar logic to DFS and BFS but with the fringe being a PQ with cumulative cost as the priority
     fringe = util.PriorityQueue()
-    visited = set() #Set maybe instead of dictionary
-    fringe.push([problem.getStartState(), [], 0], 0)
+    visited = {problem.getStartState()}
+    fringe.push((problem.getStartState(), [], 0), 0)
+    priority = {problem.getStartState(): 0}
 
     while (not fringe.isEmpty()):
         #Get the next state we should explore
@@ -157,30 +158,25 @@ def uniformCostSearch(problem: SearchProblem):
         currState = currSuccessor[0] 
         actions = currSuccessor[1] #List of all the prev actions leading to this node
         cumCost = currSuccessor[2] #Cumulative cost of the current path
-        visited.add(currState)
 
-        #Print statements for testing
-        print("---------")
-        print(currSuccessor)
-        print("________")
-        for i in visited:
-            print(i)
-        
         #Check if it's the goal
         if (problem.isGoalState(currState)):
             return actions
-        
-        #If not the goal, expand the current node and add the possibilities to the search graph
-        for state in problem.getSuccessors(currState):
-            coord = state[0]
-            action = state[1]
-            cost = state[2]
-            if (coord not in visited):
-                #PROBLEM for GRAPH_MANYPATHS: B1 is visited before C, so B1 does NOT update C, rather it makes a NEW C
-                #It is considered a new C because the paths are different (original C has A->C, but B1 makes a B1->C path)
-                #Thus our fringe has 2 versions of C before it actually visits C, and so the set restriction doesn't apply
-                #Solution: Need to find a better way to keep track of path OR a better way to update costs in the PQ
-                fringe.update([coord, actions + [action], cumCost + cost], cumCost + cost) #all update does is update the cost (does not change key)
+
+        #If not the goal, expand the current node and add the possibilities to the search tree
+        for successor in problem.getSuccessors(currState):
+            #parse successor
+            state = successor[0]
+            action = actions + [successor[1]]
+            cost = cumCost + successor[2] 
+
+            if (state not in visited):
+                fringe.push([state, action, cost], cost)
+                visited.add(state)
+                priority[state] = cost
+            elif (priority[state] > cost):
+                fringe.update([state, action, cost], cost)
+                priority[state] = cost
 
     #Failure, no possible goal
     return None
@@ -194,9 +190,41 @@ def nullHeuristic(state, problem=None):
 
 def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    #We need to sum the cumCost (greedy) and the heuristic value of a node, and that will be our priority
+    fringe = util.PriorityQueue()
+    visited = {problem.getStartState()}
+    hN = heuristic(problem.getStartState(), problem)
+    fringe.push((problem.getStartState(), [], 0), hN)
+    priority = {problem.getStartState(): hN}
 
+    while (not fringe.isEmpty()):
+        #Get the next state we should explore
+        currSuccessor = fringe.pop()
+        currState = currSuccessor[0] 
+        actions = currSuccessor[1] #List of all the prev actions leading to this node
+        cumCost = currSuccessor[2] #gN (cumCost)
+
+        #Check if it's the goal
+        if (problem.isGoalState(currState)):
+            return actions
+
+        #If not the goal, expand the current node and add the possibilities to the search tree
+        for successor in problem.getSuccessors(currState):
+            #parse successor
+            state = successor[0]
+            action = actions + [successor[1]]
+            cost = cumCost + successor[2]
+
+            if (state not in visited):
+                fringe.push([state, action, cost], cost + heuristic(state, problem))
+                visited.add(state)
+                priority[state] = cost
+            elif (priority[state] > cost + heuristic(state, problem)):
+                fringe.update([state, action, cost], cost + heuristic(state, problem))
+                priority[state] = cost + heuristic(state, problem)
+
+    #Failure, no possible goal
+    return None
 
 # Abbreviations
 bfs = breadthFirstSearch
